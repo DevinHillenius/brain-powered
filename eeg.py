@@ -5,13 +5,18 @@ import sys
 import numpy as np
 from scipy.io import loadmat
 
-from sklearn.model_selection import ShuffleSplit
+from sklearn.pipeline import Pipeline
+from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
+from sklearn.model_selection import ShuffleSplit, cross_val_score
+
+from mne.decoding import CSP
 
 
 def load_eeg_mat(path, label='data'):
     """ Load the eeg data into a numpy 3D matrix where the shape is
          (# datapoints, # channels,  # tests) """
     return loadmat(path)[label]
+
 
 def load_measurement(folder_path):
     c1_base = load_eeg_mat(folder_path + "/c1_base.mat")
@@ -21,7 +26,17 @@ def load_measurement(folder_path):
     c2_cond = load_eeg_mat(folder_path + "/c2_cond.mat")
 
     return (combine_channels(c1_base, c2_base), 
-                combine_channels(c1_cond, c2_cond))
+            combine_channels(c1_cond, c2_cond))
+
+def load_folders(folder1, folder2):
+    cond1_c1 = load_eeg_mat(folder1 + "/c1_cond.mat")
+    cond1_c2 = load_eeg_mat(folder1 + "/c2_cond.mat")
+
+    cond2_c1 = load_eeg_mat(folder2 + "/c1_cond.mat")
+    cond2_c2 = load_eeg_mat(folder2 + "/c2_cond.mat")
+
+    return (combine_channels(cond1_c1, cond1_c2), 
+            combine_channels(cond2_c1, cond2_c2))
 
 def combine_channels(c1, c2):
     """ Combine data from the two channels together in a 3D matrix where
@@ -29,22 +44,26 @@ def combine_channels(c1, c2):
     return np.concatenate((np.transpose(c1), np.transpose(c2)), axis=1)
 
 
-
 if __name__ == "__main__":
-    if len(sys.argv) > 1:
-        base, cond = load_measurement(sys.argv[1])
-
-        shuffle = ShuffleSplit()
+    if len(sys.argv) > 2:
+        #base, cond = load_measurement(sys.argv[1])
+        base, cond = load_folders(sys.argv[1], sys.argv[2])
         
         base_labels = np.zeros(base.shape[0])
-        cond_labels = np.zeros(cond.shape[0])
+        cond_labels = np.ones(cond.shape[0])
 
         # Input dimensions must be the same
         print(base.shape)
         print(cond.shape)
+
+        #cond = np.resize(cond, base.shape, axis=2)
+        print(base.shape)
+        print(cond.shape)
+
         train_data = np.concatenate((base, cond))
         
         labels = np.concatenate((base_labels, cond_labels))
+        print(labels)
 
         # Assemble a classifier
         lda = LinearDiscriminantAnalysis()
@@ -52,7 +71,8 @@ if __name__ == "__main__":
 
         # Use scikit-learn Pipeline with cross_val_score function
         clf = Pipeline([('CSP', csp), ('LDA', lda)])
-        scores = cross_val_score(clf, train_data, labels, cv=shuffle, n_jobs=1)
+        scores = cross_val_score(clf, train_data, labels, cv=ShuffleSplit(), n_jobs=1)
+        print(scores)
 
         # Printing the results
         class_balance = np.mean(labels == labels[0])
@@ -72,5 +92,5 @@ if __name__ == "__main__":
         # # Create a raw object, this can be used to create a MNE Epoch object
         # raw = mne.io.RawArray(entry, info)
     else:
-        print("Usage: python eeg.py [path]")
+        print("Usage: python eeg.py [folder1] [folder2]")
     
