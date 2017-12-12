@@ -1,2 +1,4 @@
 mne
 scipy
+matplotlib
+sklearn
