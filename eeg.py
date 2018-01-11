@@ -18,11 +18,28 @@ def nextpow2(in_list):
         output.append(math.ceil(math.log(abs(entry), 2)))
     return output
 
-def filter(data, channel, Fs):
+def filter_jonas(data, channel, Fs, lb, ub):
     nfft = 2^nextpow2([data.shape[0]])[0]
-    Y = np.fft.fft(data(:,channel), nfft) / data.shape[0]
+    Y = np.fft.fft(data[:, channel], nfft) / data.shape[0]
     f = Fs / 2 * np.linspace(0, 1, nfft / 2 + 1)
 
+    Ylb_1 = round(2 * lb * len(Y) / Fs ) + 1
+    Ylb_2 = len(Y) - round(2 * lb * len(Y) / Fs) + 1
+    Yhb_1 = round(2 * ub * len(Y) / Fs) + 1
+    Yhb_2 = len(Y) - round(2 * ub * len(Y) / Fs) + 1
+
+    Y[1:Ylb_1] = 0
+    Y[Ylb_2:len(Y)] = 0
+    Y[Yhb_1:len(Y) / 2] = 0
+    Y[len(Y) / 2:Yhb_2] = 0
+
+    fY = np.fft.ifft(Y) * data.shape[0]
+    fY = fY[1:len(data[:, channel])]
+
+    Y2 = fft(fY, nfft) / data.shape[0]
+    selection = np.nonzero(f[l1:h1]) #?????
+    return np.mean(2 * np.absolute(Y2(selection)))
+    
 def load_eeg_mat(path, label='data'):
     """ Load the eeg data into a numpy 3D matrix where the shape is
          (# datapoints, # channels,  # tests) """
