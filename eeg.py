@@ -2,6 +2,7 @@
 
 import mne
 import sys
+import math
 import numpy as np
 from scipy.io import loadmat
 
@@ -11,6 +12,16 @@ from sklearn.model_selection import ShuffleSplit, cross_val_score
 
 from mne.decoding import CSP
 
+def nextpow2(in_list):
+    output = []
+    for entry in in_list:
+        output.append(math.ceil(math.log(abs(entry), 2)))
+    return output
+
+def filter(data, channel, Fs):
+    nfft = 2^nextpow2([data.shape[0]])[0]
+    Y = np.fft.fft(data(:,channel), nfft) / data.shape[0]
+    f = Fs / 2 * np.linspace(0, 1, nfft / 2 + 1)
 
 def load_eeg_mat(path, label='data'):
     """ Load the eeg data into a numpy 3D matrix where the shape is
@@ -25,7 +36,7 @@ def load_measurement(folder_path):
     c1_cond = load_eeg_mat(folder_path + "/c1_cond.mat")
     c2_cond = load_eeg_mat(folder_path + "/c2_cond.mat")
 
-    return (combine_channels(c1_base, c2_base), 
+    return (combine_channels(c1_base, c2_base),
             combine_channels(c1_cond, c2_cond))
 
 def load_folders(folder1, folder2):
@@ -35,7 +46,7 @@ def load_folders(folder1, folder2):
     cond2_c1 = load_eeg_mat(folder2 + "/c1_cond.mat")
     cond2_c2 = load_eeg_mat(folder2 + "/c2_cond.mat")
 
-    return (combine_channels(cond1_c1, cond1_c2), 
+    return (combine_channels(cond1_c1, cond1_c2),
             combine_channels(cond2_c1, cond2_c2))
 
 def combine_channels(c1, c2):
@@ -48,7 +59,7 @@ if __name__ == "__main__":
     if len(sys.argv) > 2:
         #base, cond = load_measurement(sys.argv[1])
         base, cond = load_folders(sys.argv[1], sys.argv[2])
-        
+
         base_labels = np.zeros(base.shape[0])
         cond_labels = np.ones(cond.shape[0])
 
@@ -61,7 +72,7 @@ if __name__ == "__main__":
         print(cond.shape)
 
         train_data = np.concatenate((base, cond))
-        
+
         labels = np.concatenate((base_labels, cond_labels))
         print(labels)
 
@@ -93,4 +104,3 @@ if __name__ == "__main__":
         # raw = mne.io.RawArray(entry, info)
     else:
         print("Usage: python eeg.py [folder1] [folder2]")
-    
