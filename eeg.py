@@ -18,7 +18,9 @@ def nextpow2(in_list):
         output.append(math.ceil(math.log(abs(entry), 2)))
     return output
 
-def filter_jonas(data, channel, Fs, lb, ub):
+def filter_jonas(data, channel, Fs, l1, u1):
+    lb = l1 / 2
+    ub = u1 / 2
     nfft = 2^nextpow2([data.shape[0]])[0]
     Y = np.fft.fft(data[:, channel], nfft) / data.shape[0]
     f = Fs / 2 * np.linspace(0, 1, nfft / 2 + 1)
@@ -30,16 +32,16 @@ def filter_jonas(data, channel, Fs, lb, ub):
 
     Y[1:Ylb_1] = 0
     Y[Ylb_2:len(Y)] = 0
-    Y[Yhb_1:len(Y) / 2] = 0
-    Y[len(Y) / 2:Yhb_2] = 0
+    Y[Yhb_1:int(len(Y) / 2)] = 0
+    Y[int(len(Y) / 2):Yhb_2] = 0
 
     fY = np.fft.ifft(Y) * data.shape[0]
     fY = fY[1:len(data[:, channel])]
 
-    Y2 = fft(fY, nfft) / data.shape[0]
-    selection = np.nonzero(f[l1:h1]) #?????
-    return np.mean(2 * np.absolute(Y2(selection)))
-    
+    Y2 = np.fft.fft(fY, nfft) / data.shape[0]
+    selection = np.nonzero(f[l1:u1]) #?????
+    return np.mean(2 * np.absolute(Y2[selection]))
+
 def load_eeg_mat(path, label='data'):
     """ Load the eeg data into a numpy 3D matrix where the shape is
          (# datapoints, # channels,  # tests) """
@@ -93,20 +95,22 @@ if __name__ == "__main__":
         labels = np.concatenate((base_labels, cond_labels))
         print(labels)
 
-        # Assemble a classifier
-        lda = LinearDiscriminantAnalysis()
-        csp = CSP(n_components=4, reg=None, log=True, norm_trace=False)
+        print(filter_jonas(base, 1, 256, 8, 13))
 
-        # Use scikit-learn Pipeline with cross_val_score function
-        clf = Pipeline([('CSP', csp), ('LDA', lda)])
-        scores = cross_val_score(clf, train_data, labels, cv=ShuffleSplit(), n_jobs=1)
-        print(scores)
-
-        # Printing the results
-        class_balance = np.mean(labels == labels[0])
-        class_balance = max(class_balance, 1. - class_balance)
-        print("Classification accuracy: %f / Chance level: %f" % (np.mean(scores),
-                                                                class_balance))
+        # # Assemble a classifier
+        # lda = LinearDiscriminantAnalysis()
+        # csp = CSP(n_components=4, reg=None, log=True, norm_trace=False)
+        #
+        # # Use scikit-learn Pipeline with cross_val_score function
+        # clf = Pipeline([('CSP', csp), ('LDA', lda)])
+        # scores = cross_val_score(clf, train_data, labels, cv=ShuffleSplit(), n_jobs=1)
+        # print(scores)
+        #
+        # # Printing the results
+        # class_balance = np.mean(labels == labels[0])
+        # class_balance = max(class_balance, 1. - class_balance)
+        # print("Classification accuracy: %f / Chance level: %f" % (np.mean(scores),
+        #                                                         class_balance))
 
         # data = load_eeg_mat(sys.argv[1])
         # # A single response in a trial
