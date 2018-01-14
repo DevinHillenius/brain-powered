@@ -1,22 +1,25 @@
 #! /usr/bin/env python3
 
-import mne
+# import mne
 import sys
 import math
 import numpy as np
 from scipy.io import loadmat
 
-from sklearn.pipeline import Pipeline
-from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
-from sklearn.model_selection import ShuffleSplit, cross_val_score
+# from sklearn.pipeline import Pipeline
+# from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
+# from sklearn.model_selection import ShuffleSplit, cross_val_score
 
-from mne.decoding import CSP
+# from mne.decoding import CSP
 from matplotlib import pyplot
+
+import argparse
+import os
 
 
 def fourrier(data, sample_rate):
     """ Perfom a fourrier analysis, returns a 2 by n matrix. """
-    timestep = 1.0/sample_rate
+    timestep = 1.0/float(sample_rate)
     power = np.absolute(np.fft.fft(data)) / data.shape[0]
     frequency = np.fft.fftfreq(data.shape[0], d=timestep)
 
@@ -64,30 +67,51 @@ def load_eeg_mat(path, label='data'):
     return mat
 
 if __name__ == "__main__":
-    if len(sys.argv) > 2:
-        # load two channels of two conditions
-        cond1_c1 = load_eeg_mat(sys.argv[1]) 
-        cond1_c2 = load_eeg_mat(sys.argv[2])
-        
-        cond2_c1 = load_eeg_mat(sys.argv[3]) 
-        cond2_c2 = load_eeg_mat(sys.argv[4])
+    parser = argparse.ArgumentParser(description='Visualize eeg readings using \
+    python scatterplots. The script uses folders as a representation of \
+    conditions. Every folder must contain two channels, c1.mat and c2.mat. ')
+    # Specify folder
+    parser.add_argument('-f', '--folder', nargs='+', help='Select folders to \
+    compare. Each folder must contain both a c1.mat and \
+    c2.mat.', required=True)
+    # Specify sample rate
+    parser.add_argument('-s', '--sample_rate', help='Specify the sample rate \
+    of the measurement', default=256)
+    # Specify frequency range
+    parser.add_argument('-b', '--band', nargs=2, type=int, help="Specify the \
+    frequency band in Hz, for example \'--band 8 13\'", default=[8, 13])
+    args = parser.parse_args()
+    
+    folders = args.folder
+    band = args.band
+    sample_rate = args.sample_rate
 
-        # samples per second
-        sample_rate = 256
-        alpha = (8, 13)
-        delta = (1, 3)
-        beta = (14, 20)
-        band = alpha
+    xmin = 1
+    ymin = 1
+    xmax = 0
+    ymax = 0
+    plots = []
+    for folder in folders:
+        p1 = os.path.join(folder, 'c1.mat')
+        p2 = os.path.join(folder, 'c2.mat')
+        if not os.path.isfile(p1) or not os.path.isfile(p2):
+            print("Error: c1.mat and c2.mat could not be found in the" +
+                  "specified folders.  Please check if the directories and " +
+                  "files are present.")
+            exit()
+        c1 = load_eeg_mat(p1)
+        c2 = load_eeg_mat(p2)
+        results = experiment(c1, c2, sample_rate, band)
+        xmin = min(results[0] + [xmin])
+        xmax = max(results[0] + [xmax])
+        ymin = min(results[1] + [ymin])
+        ymax = max(results[1] + [ymax])
+        plots.append(pyplot.scatter(results[0], results[1]))
+    # Use the name of the folder as legend entry
+    pyplot.legend(plots, [folder.split("/")[-1] for folder in folders])
 
-        res1 = experiment(cond1_c1, cond1_c2, sample_rate, band)
-        res2 = experiment(cond2_c1, cond2_c2, sample_rate, band)
-        pyplot.scatter(res1[0], res1[1])
-        pyplot.scatter(res2[0], res2[1])
-        axes = pyplot.gca()
-
-        axes.set_xlim([min(res1[0] + res2[0]), max(res1[0] + res2[0])])
-        axes.set_ylim([min(res1[0] + res2[1]), max(res1[0] + res2[1])])
-        pyplot.show()
-    else:
-        print("Usage: ./eeg.py [condition 1 channel 1] [condition 1 channel 2]\
- [condition 2 channel 1] [condition 2 channel 2]")
+    axes = pyplot.gca()
+    axes.set_xlim((xmin, xmax))
+    axes.set_ylim((ymin, ymax))
+    pyplot.show()
+    exit()
