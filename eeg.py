@@ -110,6 +110,7 @@ if __name__ == "__main__":
         c1 = load_eeg_mat(p1)
         c2 = load_eeg_mat(p2)
         results = experiment(c1, c2, sample_rate, band, length)
+        # Calculate the boundaries for the plot
         xmin = min(results[0] + [xmin])
         xmax = max(results[0] + [xmax])
         ymin = min(results[1] + [ymin])
@@ -118,9 +119,12 @@ if __name__ == "__main__":
     # Use the name of the folder as legend entry
     pyplot.legend(plots, folders)
 
+    # Configure the scatter plot
     axes = pyplot.gca()
     axes.set_xlim((xmin, xmax))
     axes.set_ylim((ymin, ymax))
+    pyplot.xlabel("Mean power Channel 1")
+    pyplot.ylabel("Mean power Channel 2")
     fig = pyplot.gcf()
     fig.canvas.set_window_title("Brain powered: Sample rate: {}/s, Band: {}-{}Hz".format(sample_rate, band[0], band[1]))
     pyplot.show()
