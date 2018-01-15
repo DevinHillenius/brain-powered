@@ -47,7 +47,11 @@ def trial_meanpower(data, sample_rate, band):
     return spectrum_meanpower(b)
 
 
-def experiment(c1, c2, sample_rate, band):
+def experiment(c1, c2, sample_rate, band, length):
+    if length != None and length > 0:
+        c1 = c1[:round(sample_rate*length)]
+        c2 = c2[:round(sample_rate*length)]
+
     results = [[], []]
     for trial in c1:
         results[0].append(trial_meanpower(trial, sample_rate, band))
@@ -76,15 +80,19 @@ if __name__ == "__main__":
     c2.mat.', required=True)
     # Specify sample rate
     parser.add_argument('-s', '--sample_rate', help='Specify the sample rate \
-    of the measurement', default=256)
+    of the measurement', type=int, default=256)
     # Specify frequency range
     parser.add_argument('-b', '--band', nargs=2, type=int, help="Specify the \
     frequency band in Hz, for example \'--band 8 13\'", default=[8, 13])
+
+    parser.add_argument('-l', '--length', type=float, help="Specify the \
+    length of the signal to process, for example \'--length 1.5\' to only process the first one and a half seconds of the signal. If the specified length is longer than the length of the signal, the whole signal is used.")
     args = parser.parse_args()
     
     folders = args.folder
     band = args.band
     sample_rate = args.sample_rate
+    length = args.length
 
     xmin = 1
     ymin = 1
@@ -101,17 +109,19 @@ if __name__ == "__main__":
             exit()
         c1 = load_eeg_mat(p1)
         c2 = load_eeg_mat(p2)
-        results = experiment(c1, c2, sample_rate, band)
+        results = experiment(c1, c2, sample_rate, band, length)
         xmin = min(results[0] + [xmin])
         xmax = max(results[0] + [xmax])
         ymin = min(results[1] + [ymin])
         ymax = max(results[1] + [ymax])
         plots.append(pyplot.scatter(results[0], results[1]))
     # Use the name of the folder as legend entry
-    pyplot.legend(plots, [folder.split("/")[-1] for folder in folders])
+    pyplot.legend(plots, folders)
 
     axes = pyplot.gca()
     axes.set_xlim((xmin, xmax))
     axes.set_ylim((ymin, ymax))
+    fig = pyplot.gcf()
+    fig.canvas.set_window_title("Brain powered: Sample rate: {}/s, Band: {}-{}Hz".format(sample_rate, band[0], band[1]))
     pyplot.show()
     exit()
