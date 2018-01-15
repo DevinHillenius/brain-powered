@@ -1,16 +1,13 @@
 #! /usr/bin/env python3
+# EEG power vizualiser
+# By Derk Barten and Devin Hillenius
+# UvA Brain Powered 2017-2018
 
-# import mne
 import sys
 import math
 import numpy as np
 from scipy.io import loadmat
 
-# from sklearn.pipeline import Pipeline
-# from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
-# from sklearn.model_selection import ShuffleSplit, cross_val_score
-
-# from mne.decoding import CSP
 from matplotlib import pyplot
 
 import argparse
@@ -86,9 +83,11 @@ if __name__ == "__main__":
     frequency band in Hz, for example \'--band 8 13\'", default=[8, 13])
 
     parser.add_argument('-l', '--length', type=float, help="Specify the \
-    length of the signal to process, for example \'--length 1.5\' to only process the first one and a half seconds of the signal. If the specified length is longer than the length of the signal, the whole signal is used.")
+    length of the signal to process, for example \'--length 1.5\' to only \
+    process the first one and a half seconds of the signal. If the specified \
+    length is longer than the length of the signal, the whole signal is used.")
     args = parser.parse_args()
-    
+
     folders = args.folder
     band = args.band
     sample_rate = args.sample_rate
@@ -122,6 +121,7 @@ if __name__ == "__main__":
     axes.set_xlim((xmin, xmax))
     axes.set_ylim((ymin, ymax))
     fig = pyplot.gcf()
-    fig.canvas.set_window_title("Brain powered: Sample rate: {}/s, Band: {}-{}Hz".format(sample_rate, band[0], band[1]))
+    fig.canvas.set_window_title("Brain Powered: Sample rate: {}/s, \
+    Band: {}-{}Hz".format(sample_rate, band[0], band[1]))
     pyplot.show()
     exit()
