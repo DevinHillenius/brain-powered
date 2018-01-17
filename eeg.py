@@ -72,9 +72,9 @@ if __name__ == "__main__":
     python scatterplots. The script uses folders as a representation of \
     conditions. Every folder must contain two channels, c1.mat and c2.mat. ')
     # Specify folder
-    parser.add_argument('-f', '--folder', nargs='+', help='Select folders to \
+    parser.add_argument('folder', nargs='+', help='Select folders to \
     compare. Each folder must contain both a c1.mat and \
-    c2.mat.', required=True)
+    c2.mat.')
     # Specify sample rate
     parser.add_argument('-s', '--sample_rate', help='Specify the sample rate \
     of the measurement', type=int, default=256)
