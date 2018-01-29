@@ -36,23 +36,24 @@ def parse(filename):
 
 
 def cut(data):
+    """ Cut conditions out of data. """
     low = False
     high = False
     start = 0
     cnt = 0
     conditions = []
-
     for line in data:
         # If change from nonzero to zero dio
-        if line[-1] == 0 and not low:
+        if line[-1] == 0 and not low and start != 0:
             low = True
             high = False
-            start = cnt
+            
+            conditions.append(data[start:cnt])
         # If change from zero to nonzero dio
         elif line[-1] != 0 and not high:
             high = True
             low = False
-            conditions.append(data[start:cnt])
+            start = cnt
         cnt += 1
     return np.array(conditions)
 
@@ -60,7 +61,9 @@ def cut(data):
 def crop(data):
     cnt = 0
     for trial in data:
-        data[cnt] = trial[0:1000, :]
+        #print(trial.shape)
+        data[cnt] = trial[:1281, :]
+        #print(data[cnt].shape)
         cnt += 1
     return data
 
@@ -108,14 +111,22 @@ if __name__ == '__main__':
     log_file = args.filename[1]
 
     # OVerwrite temporarily
-    data_file = 'data/BP_Ron.mat'
-    log_file = 'data/results_ron.csv'
+    #data_file = 'data/BP_Ron.mat'
+    #log_file = 'data/results_ron.csv'
 
     data = loadmat(data_file)['data'] 
     labels = parse(log_file)
+    #print(labels)
 
     data = cut(data)
-    #data = crop(data)
-
+    #print(labels)
+    i = 0
+    for trial in data:
+        #if trial.shape[0] < 2000:
+        i += 1
+        print(trial.shape)
+    #print(i)
+    data = crop(data)
+    #print(data[0].shape)
     out = label_eeg(data, labels)
     write_eeg(out, 'test')

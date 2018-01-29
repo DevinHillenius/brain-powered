@@ -62,9 +62,11 @@ def load_eeg_mat(path, label='data'):
         the shape is (#trials, #datapoints)"""
     # Load matrix (# datapoints, # channels,  # tests)
     mat = loadmat(path)[label]
-    mat = np.transpose(mat)
-    # Remove redundant channel dimension
-    mat = mat[:, 0, :]
+    if len(mat.shape) == 3:
+        mat = np.transpose(mat)
+        # Remove redundant channel dimension
+        mat = mat[:, 0, :]
+    print(mat.shape)
     return mat
 
 if __name__ == "__main__":
