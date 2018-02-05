@@ -10,8 +10,13 @@ from scipy.io import savemat
 import numpy as np
 import os
 
+VERBOSE = False
+
 
 def parse(filename):
+    """ Extract the order of the conditions from the eeg log files. Returns
+    a dictionary with the condition name as key and an array of indices as
+    value. """
     conditions = {'HandLinks': [], 'HandRechts': [], 'VoetLinks': [],
                   'VoetRechts': [], 'TongOmhoog': []}
 
@@ -19,6 +24,7 @@ def parse(filename):
     pattern = r'\b(Image)\b'
     count = 0
     for line in f:
+        # Check if 'Image' is mentioned on the line
         if re.findall(pattern, line):
             # Extract the name of the shown image
             filename = line.split(';')[5]
@@ -26,12 +32,11 @@ def parse(filename):
             name = filename.split('.')[0]
             if name in conditions:
                 conditions[name].append(count)
-                #print('Trial {}, {}'.format(count, name))
                 count += 1
 
-    # Uncomment to print the conditions with indices
-    #for condition in conditions: 
-    #    print("{}: {}".format(condition, conditions[condition]))
+    if VERBOSE:
+        print("Order of the recorded trials:\n{}\n".format(conditions))
+        print("{} trials were recorded according to the eeg logs". format(count))
     return conditions
 
 
@@ -55,25 +60,34 @@ def cut(data):
             low = False
             start = cnt
         cnt += 1
+    
+    if VERBOSE:
+        trials = np.array(conditions).shape[0]
+        print("{} trials where extracted from the matlab eeg file".format(trials))
     return np.array(conditions)
 
-# TODO: not sure what to do with this
+# Crop all trials to the same length
 def crop(data):
+    """ Crop all trials to the same length to create an uniform length data. """
     cnt = 0
+    length = min([trial.shape[0] for trial in data])
+
     for trial in data:
-        #print(trial.shape)
-        data[cnt] = trial[:1281, :]
-        #print(data[cnt].shape)
+        data[cnt] = trial[:length, :]
         cnt += 1
+
+    if VERBOSE:
+        print("Cropping data to {} samples per data".format(length))
     return data
 
 
 def get_channel(data, num):
+    """ Use a single channel from eeg measurements. """
     return data[:, num]
 
 
 def label_condition(data, indices, num):
-    """ Match the conditions with the correct labels """
+    """ Collect all trials that belong to the same condition. """
     l = []
     for index in indices:
         trial = data[index]
@@ -83,9 +97,10 @@ def label_condition(data, indices, num):
 
 
 def label_eeg(data, labels):
-    """ Use the labels from the eeg log to label the eeg data """
+    """ Label every trial with a condition. """
     out = {}
     for label in labels:
+        # Label both recorded channels
         c1 = label_condition(data, labels[label], 0)
         c2 = label_condition(data, labels[label], 1)
         out[label] = (c1, c2)
@@ -105,28 +120,23 @@ def write_eeg(labeled_data, root_folder):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Parses results from trials \
     in a easier to use format.')
-    parser.add_argument('filename', nargs=2, help='Select .mat and accompanying csv file')
+    parser.add_argument('matlab_file', help='Specify the .mat file from the eeg session')
+    parser.add_argument('log_file', help='Specify the .csv log file from the eeg session')
+    parser.add_argument('destination_folder', help='Specify the folder in which to store the data')
+    parser.add_argument('-v', dest='verbose', action='store_true', help='Enable verbose output for debugging purposes')
     args = parser.parse_args()
-    data_file = args.filename[0]
-    log_file = args.filename[1]
-
-    # OVerwrite temporarily
-    #data_file = 'data/BP_Ron.mat'
-    #log_file = 'data/results_ron.csv'
-
-    data = loadmat(data_file)['data'] 
+    data_file = args.matlab_file
+    log_file = args.log_file
+    VERBOSE = args.verbose
+    
+    data = loadmat(data_file)['data']
     labels = parse(log_file)
-    #print(labels)
 
+    # Cut sometimes not working (Derk, Lotte)
     data = cut(data)
-    #print(labels)
-    i = 0
-    for trial in data:
-        #if trial.shape[0] < 2000:
-        i += 1
-        print(trial.shape)
-    #print(i)
     data = crop(data)
-    #print(data[0].shape)
+
     out = label_eeg(data, labels)
-    write_eeg(out, 'test')
+    if VERBOSE:
+        print("Written data to folder: {}".format(args.destination_folder))
+        write_eeg(out, args.destination_folder)

@@ -66,7 +66,11 @@ def load_eeg_mat(path, label='data'):
         mat = np.transpose(mat)
         # Remove redundant channel dimension
         mat = mat[:, 0, :]
-    print(mat.shape)
+
+    if VERBOSE:
+        print("Loaded {}".format(path))
+        print("Number of trials: {}".format(mat.shape[0]))
+        print("Length of trials: {}\n".format(mat.shape[1]))
     return mat
 
 if __name__ == "__main__":
@@ -88,12 +92,15 @@ if __name__ == "__main__":
     length of the signal to process, for example \'--length 1.5\' to only \
     process the first one and a half seconds of the signal. If the specified \
     length is longer than the length of the signal, the whole signal is used.")
+
+    parser.add_argument('-v', dest='verbose', action='store_true', help='Enable verbose output for debugging purposes')
     args = parser.parse_args()
 
     folders = args.folder
     band = args.band
     sample_rate = args.sample_rate
     length = args.length
+    VERBOSE = args.verbose
 
     xmin = 1
     ymin = 1
