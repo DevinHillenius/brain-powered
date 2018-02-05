@@ -139,4 +139,4 @@ if __name__ == '__main__':
     out = label_eeg(data, labels)
     if VERBOSE:
         print("Written data to folder: {}".format(args.destination_folder))
-        write_eeg(out, args.destination_folder)
+    write_eeg(out, args.destination_folder)
