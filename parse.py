@@ -3,6 +3,9 @@
 # By Derk Barten and Devin Hillenius
 # UvA Brain Powered 2017-2018
 
+# TODO add ignore option
+# TODO enforce same number of trials eeg, log
+
 import re
 import argparse
 from scipy.io import loadmat
@@ -22,7 +25,7 @@ def parse(filename):
 
     f = open(filename, 'r')
     pattern = r'\b(Image)\b'
-    count = 0
+    trials = 0
     for line in f:
         # Check if 'Image' is mentioned on the line
         if re.findall(pattern, line):
@@ -31,40 +34,54 @@ def parse(filename):
             # Remove the image extention
             name = filename.split('.')[0]
             if name in conditions:
-                conditions[name].append(count)
-                count += 1
+                conditions[name].append(trials)
+                trials += 1
 
     if VERBOSE:
         print("Order of the recorded trials:\n{}\n".format(conditions))
-        print("{} trials were recorded according to the eeg logs". format(count))
-    return conditions
+        print("{} trials were extracted from the eeg logs". format(trials))
+    return conditions, trials
 
 
-def cut(data):
+def cut(data, dio, ignore):
     """ Cut conditions out of data. """
     low = False
     high = False
+    start_flag = False
     start = 0
     cnt = 0
     conditions = []
+    i = 0
+
     for line in data:
         # If change from nonzero to zero dio
-        if line[-1] == 0 and not low and start != 0:
+        if line[dio] == 0 and not low and cnt != 0:
             low = True
             high = False
             
-            conditions.append(data[start:cnt])
+            if start_flag:
+                # Print the length of each trial for debugging purposes
+                if VERBOSE and i == 0:
+                    print("Length of each trial:")
+                if VERBOSE:
+                    print("Trial {}:\t{}".format(i, cnt - start))
+                conditions.append(data[start:cnt])
+                i += 1
         # If change from zero to nonzero dio
-        elif line[-1] != 0 and not high:
+        elif line[dio] != 0 and not high:
             high = True
             low = False
+            start_flag = True
             start = cnt
         cnt += 1
-    
+
+    conditions = np.array(conditions)
+    conditions = conditions[ignore:]
+    trials = conditions.shape[0]
+
     if VERBOSE:
-        trials = np.array(conditions).shape[0]
         print("{} trials where extracted from the matlab eeg file".format(trials))
-    return np.array(conditions)
+    return conditions, trials
 
 # Crop all trials to the same length
 def crop(data):
@@ -124,17 +141,31 @@ if __name__ == '__main__':
     parser.add_argument('log_file', help='Specify the .csv log file from the eeg session')
     parser.add_argument('destination_folder', help='Specify the folder in which to store the data')
     parser.add_argument('-v', dest='verbose', action='store_true', help='Enable verbose output for debugging purposes')
+    parser.add_argument('-i', '--ignore', type=int, default=0, help='The number of trials to ignore from the recorded session to remove rubbish measurements at the start of the session.')
+    parser.add_argument('-d', '--dio', type=int, default=-1, help='Specify the channel that contains the dio, the last channel (-1) by default.')    
+
     args = parser.parse_args()
     data_file = args.matlab_file
     log_file = args.log_file
     VERBOSE = args.verbose
-    
+
     data = loadmat(data_file)['data']
-    labels = parse(log_file)
+    labels, log_trials  = parse(log_file)
 
     # Cut sometimes not working (Derk, Lotte)
-    data = cut(data)
+    data, eeg_trials = cut(data, args.dio, args.ignore)
     data = crop(data)
+
+    # Only continue if the number of trials in both files correspond
+    if eeg_trials != log_trials:
+        msg = ("\nERROR: Number of trials in the log file does not match the "
+            "number of trials in the eeg file. Please rerun the program with the "
+            "'-v' flag to enable debugging statements. If the number of trials "
+            "in the eeg file seems to be one or zero, please check if the dio "
+            "channel is correct. This can be changed with the '-d' commandline "
+            "option.")
+        print(msg)
+        exit(1)
 
     out = label_eeg(data, labels)
     if VERBOSE:
