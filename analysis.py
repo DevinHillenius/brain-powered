@@ -3,14 +3,12 @@
 # By Derk Barten and Devin Hillenius
 # UvA Brain Powered 2017-2018
 
+from scipy.io import loadmat
+from matplotlib import pyplot
+import numpy as np
+import argparse
 import sys
 import math
-import numpy as np
-from scipy.io import loadmat
-
-from matplotlib import pyplot
-
-import argparse
 import os
 
 VERBOSE = False
@@ -101,8 +99,8 @@ def plot(results, sample_rate, band, callback=None):
         legend_entries += pyplot.plot(results[result][0], results[result][1], 'o', label=result)
     pyplot.legend(handles=legend_entries)
     
-    pyplot.xlabel("Mean power Channel 1")
-    pyplot.ylabel("Mean power Channel 2")
+    pyplot.xlabel("Mean power First Channel")
+    pyplot.ylabel("Mean power Second Channel")
     fig = pyplot.gcf()
     fig.canvas.set_window_title("Brain Powered: Sample rate: {}/s, \
     Band: {}-{}Hz".format(sample_rate, band[0], band[1]))

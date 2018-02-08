@@ -3,6 +3,8 @@
 # By Derk Barten and Devin Hillenius
 # UvA Brain Powered 2017-2018
 
+# TODO: flexible channel selection
+
 import re
 import argparse
 from scipy.io import loadmat
@@ -97,13 +99,13 @@ def label_condition(data, indices, num):
     return np.array(l)
 
 
-def label_eeg(data, labels):
+def label_eeg(data, labels, channels):
     """ Label every trial with a condition. """
     out = {}
     for label in labels:
         # Label both recorded channels
-        c1 = label_condition(data, labels[label], 0)
-        c2 = label_condition(data, labels[label], 1)
+        c1 = label_condition(data, labels[label], channels[0])
+        c2 = label_condition(data, labels[label], channels[1])
         out[label] = (c1, c2)
     return out
 
@@ -126,11 +128,13 @@ if __name__ == '__main__':
     parser.add_argument('-v', dest='verbose', action='store_true', help='Enable verbose output for debugging purposes')
     parser.add_argument('-i', '--ignore', type=int, default=0, help='The number of trials at the start of the session to ignore. This is to remove rubbish measurements starrt of the session, such as test trials.')
     parser.add_argument('-d', '--dio', type=int, default=-1, help='Specify the channel that contains the dio on the condition, the last channel (-1) by default. The second to last is -2')    
+    parser.add_argument('-c', '--channels', nargs=2, type=int, help="Specify the channels", default=[0, 1])
 
     args = parser.parse_args()
     data_file = args.matlab_file
     log_file = args.log_file
     VERBOSE = args.verbose
+    channels = args.channels
 
     data = loadmat(data_file)['data']
     labels, logfile_trials  = parse(log_file)
@@ -176,7 +180,7 @@ if __name__ == '__main__':
         exit(1)
 
     # Match the correct condition label to each trial
-    out = label_eeg(data, labels)
+    out = label_eeg(data, labels, channels)
     
     if VERBOSE:
         print("SUCCESS: writing data to folder: {}".format(args.destination_folder))
