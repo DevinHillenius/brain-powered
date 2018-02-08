@@ -1,10 +1,7 @@
 #! /usr/bin/env python3
-# Parses raw trial results in a easier to use format
+# Parses raw eeg session data to easier to use format
 # By Derk Barten and Devin Hillenius
 # UvA Brain Powered 2017-2018
-
-# TODO add ignore option
-# TODO enforce same number of trials eeg, log
 
 import re
 import argparse
@@ -13,13 +10,13 @@ from scipy.io import savemat
 import numpy as np
 import os
 
-VERBOSE = False
-
 
 def parse(filename):
     """ Extract the order of the conditions from the eeg log files. Returns
     a dictionary with the condition name as key and an array of indices as
     value. """
+    # The measured conditions. These strings correspond to image filenames in
+    # the logfile of the eeg session.
     conditions = {'HandLinks': [], 'HandRechts': [], 'VoetLinks': [],
                   'VoetRechts': [], 'TongOmhoog': []}
 
@@ -37,16 +34,14 @@ def parse(filename):
                 conditions[name].append(trials)
                 trials += 1
 
-    if VERBOSE:
-        print("Order of the recorded trials:\n{}\n".format(conditions))
-        print("{} trials were extracted from the eeg logs". format(trials))
     return conditions, trials
 
 
-def cut(data, dio, ignore):
+def cut(data, dio):
     """ Cut conditions out of data. """
     low = False
     high = False
+    # TODO: explain why startflag and low/high
     start_flag = False
     start = 0
     cnt = 0
@@ -58,15 +53,11 @@ def cut(data, dio, ignore):
         if line[dio] == 0 and not low and cnt != 0:
             low = True
             high = False
-            
+
             if start_flag:
                 # Print the length of each trial for debugging purposes
-                if VERBOSE and i == 0:
-                    print("Length of each trial:")
-                if VERBOSE:
-                    print("Trial {}:\t{}".format(i, cnt - start))
                 conditions.append(data[start:cnt])
-                i += 1
+            i += 1
         # If change from zero to nonzero dio
         elif line[dio] != 0 and not high:
             high = True
@@ -76,12 +67,7 @@ def cut(data, dio, ignore):
         cnt += 1
 
     conditions = np.array(conditions)
-    conditions = conditions[ignore:]
-    trials = conditions.shape[0]
-
-    if VERBOSE:
-        print("{} trials where extracted from the matlab eeg file".format(trials))
-    return conditions, trials
+    return conditions
 
 # Crop all trials to the same length
 def crop(data):
@@ -93,9 +79,7 @@ def crop(data):
         data[cnt] = trial[:length, :]
         cnt += 1
 
-    if VERBOSE:
-        print("Cropping data to {} samples per data".format(length))
-    return data
+    return data, length
 
 
 def get_channel(data, num):
@@ -135,14 +119,13 @@ def write_eeg(labeled_data, root_folder):
         savemat(path + '/c2.mat', mdict={'data': labeled_data[label][1]})
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description='Parses results from trials \
-    in a easier to use format.')
-    parser.add_argument('matlab_file', help='Specify the .mat file from the eeg session')
-    parser.add_argument('log_file', help='Specify the .csv log file from the eeg session')
-    parser.add_argument('destination_folder', help='Specify the folder in which to store the data')
+    parser = argparse.ArgumentParser(description='Parses results from trials in a easier to use format.')
+    parser.add_argument('matlab_file', help='Specify the file in which the recording of the eeg session is stored (.mat)')
+    parser.add_argument('log_file', help='Specify the log file of the eeg session recoding (.csv)')
+    parser.add_argument('destination_folder', help='Specify the folder in which to store the automatically generated data')
     parser.add_argument('-v', dest='verbose', action='store_true', help='Enable verbose output for debugging purposes')
-    parser.add_argument('-i', '--ignore', type=int, default=0, help='The number of trials to ignore from the recorded session to remove rubbish measurements at the start of the session.')
-    parser.add_argument('-d', '--dio', type=int, default=-1, help='Specify the channel that contains the dio, the last channel (-1) by default.')    
+    parser.add_argument('-i', '--ignore', type=int, default=0, help='The number of trials at the start of the session to ignore. This is to remove rubbish measurements starrt of the session, such as test trials.')
+    parser.add_argument('-d', '--dio', type=int, default=-1, help='Specify the channel that contains the dio on the condition, the last channel (-1) by default. The second to last is -2')    
 
     args = parser.parse_args()
     data_file = args.matlab_file
@@ -150,14 +133,39 @@ if __name__ == '__main__':
     VERBOSE = args.verbose
 
     data = loadmat(data_file)['data']
-    labels, log_trials  = parse(log_file)
+    labels, logfile_trials  = parse(log_file)
+    # Cut on the condition; only use the signal when the condition dio was active
+    data = cut(data, args.dio)
+    # Remove the trials that can be ignored, zero by default
+    data = data[args.ignore:]
+    # Get the number of trials from the eeg recording
+    recording_trials = data.shape[0]
 
-    # Cut sometimes not working (Derk, Lotte)
-    data, eeg_trials = cut(data, args.dio, args.ignore)
-    data = crop(data)
+    if VERBOSE:
+        print("{} trials were extracted from the eeg logs". format(logfile_trials))
+        print("{} trials where extracted from the matlab eeg file".format(recording_trials))
 
-    # Only continue if the number of trials in both files correspond
-    if eeg_trials != log_trials:
+    if recording_trials == 0:
+        print("\nERROR: No trials extracted from eeg file. Please check if the correct dio channel is selected.")
+        exit(1)
+
+    # Backup the uncropped data
+    uncropped_data = np.copy(data)
+    # Crop the length of each trial to the same size
+    data, trial_length = crop(data)
+
+    if VERBOSE:
+        print("Order of the recorded trials:\n{}\n".format(labels))
+        print("Length of each trial:")
+        i = 0
+        for cond in uncropped_data:
+            print("Trial {}:\t{}".format(i, cond.shape[0]))
+            i += 1
+        
+        print("Cropping data to {} samples per data".format(trial_length))
+    
+    # Only continue if the number of trials in the both files are the same
+    if recording_trials != logfile_trials:
         msg = ("\nERROR: Number of trials in the log file does not match the "
             "number of trials in the eeg file. Please rerun the program with the "
             "'-v' flag to enable debugging statements. If the number of trials "
@@ -167,7 +175,12 @@ if __name__ == '__main__':
         print(msg)
         exit(1)
 
+    # Match the correct condition label to each trial
     out = label_eeg(data, labels)
+    
     if VERBOSE:
-        print("Written data to folder: {}".format(args.destination_folder))
+        print("SUCCESS: writing data to folder: {}".format(args.destination_folder))
+    # Write the generated data to the specified folder
     write_eeg(out, args.destination_folder)
+    exit(0)
+

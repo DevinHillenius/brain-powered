@@ -1,5 +1,5 @@
 #! /usr/bin/env python3
-# EEG power vizualiser
+# EEG power analysis and vizualiser
 # By Derk Barten and Devin Hillenius
 # UvA Brain Powered 2017-2018
 
@@ -13,6 +13,7 @@ from matplotlib import pyplot
 import argparse
 import os
 
+VERBOSE = False
 
 def fourrier(data, sample_rate):
     """ Perfom a fourrier analysis, returns a 2 by n matrix. """
@@ -44,7 +45,8 @@ def trial_meanpower(data, sample_rate, band):
     return spectrum_meanpower(b)
 
 
-def experiment(c1, c2, sample_rate, band, length):
+def analysis(c1, c2, sample_rate, band, length):
+    """ Perform a mean power analysis over the signal """
     if length != None and length > 0:
         c1 = c1[:round(sample_rate*length)]
         c2 = c2[:round(sample_rate*length)]
@@ -72,6 +74,43 @@ def load_eeg_mat(path, label='data'):
         print("Number of trials: {}".format(mat.shape[0]))
         print("Length of trials: {}\n".format(mat.shape[1]))
     return mat
+
+def run_analysis(folders, band, sample_rate, length):
+    """ Run an analysis over the specified eeg recordings using the specified
+        parameters. """
+    results = {}
+    for folder in folders:
+        p1 = os.path.join(folder, 'c1.mat')
+        p2 = os.path.join(folder, 'c2.mat')
+        if not os.path.isfile(p1) or not os.path.isfile(p2):
+            print("Error: c1.mat and c2.mat could not be found in the" +
+                  "specified folders.  Please check if the directories and " +
+                  "files are present.")
+            exit()
+        c1 = load_eeg_mat(p1)
+        c2 = load_eeg_mat(p2)
+        exp = analysis(c1, c2, sample_rate, band, length)
+        results[folder] = exp
+    return results
+
+def plot(results, sample_rate, band, callback=None):
+    """ Plot the results of the analyis to the screen. """
+    legend_entries = []
+
+    for result in results:
+        legend_entries += pyplot.plot(results[result][0], results[result][1], 'o', label=result)
+    pyplot.legend(handles=legend_entries)
+    
+    pyplot.xlabel("Mean power Channel 1")
+    pyplot.ylabel("Mean power Channel 2")
+    fig = pyplot.gcf()
+    fig.canvas.set_window_title("Brain Powered: Sample rate: {}/s, \
+    Band: {}-{}Hz".format(sample_rate, band[0], band[1]))
+
+    # Add an optional button press callback to the plot
+    if callback:
+        fig.canvas.mpl_connect('button_press_event', callback)
+    pyplot.show()
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Visualize eeg readings using \
@@ -102,39 +141,6 @@ if __name__ == "__main__":
     length = args.length
     VERBOSE = args.verbose
 
-    xmin = 1
-    ymin = 1
-    xmax = 0
-    ymax = 0
-    plots = []
-    for folder in folders:
-        p1 = os.path.join(folder, 'c1.mat')
-        p2 = os.path.join(folder, 'c2.mat')
-        if not os.path.isfile(p1) or not os.path.isfile(p2):
-            print("Error: c1.mat and c2.mat could not be found in the" +
-                  "specified folders.  Please check if the directories and " +
-                  "files are present.")
-            exit()
-        c1 = load_eeg_mat(p1)
-        c2 = load_eeg_mat(p2)
-        results = experiment(c1, c2, sample_rate, band, length)
-        # Calculate the boundaries for the plot
-        xmin = min(results[0] + [xmin])
-        xmax = max(results[0] + [xmax])
-        ymin = min(results[1] + [ymin])
-        ymax = max(results[1] + [ymax])
-        plots.append(pyplot.scatter(results[0], results[1]))
-    # Use the name of the folder as legend entry
-    pyplot.legend(plots, folders)
-
-    # Configure the scatter plot
-    axes = pyplot.gca()
-    axes.set_xlim((xmin, xmax))
-    axes.set_ylim((ymin, ymax))
-    pyplot.xlabel("Mean power Channel 1")
-    pyplot.ylabel("Mean power Channel 2")
-    fig = pyplot.gcf()
-    fig.canvas.set_window_title("Brain Powered: Sample rate: {}/s, \
-    Band: {}-{}Hz".format(sample_rate, band[0], band[1]))
-    pyplot.show()
-    exit()
+    results = run_analysis(folders, band, sample_rate, length)
+    plot(results, sample_rate, band)
+    exit(0)
