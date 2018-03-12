@@ -44,7 +44,7 @@ def calibrate(filename):
 
 
 def init(filename='data.csv'):
-    analysis.KNN = create_knn_classifier(calibrate(filename))
+    analysis.KNN = analysis.create_knn_classifier(calibrate(filename))
 
 if __name__ == '__main__':
     init()
