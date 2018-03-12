@@ -76,9 +76,7 @@ if __name__ == "__main__":
 
     results = run_analysis(folders, band, sample_rate, length)
     KNN = create_knn_classifier(results)
-    
+
     # Create an interactive plot
     plot(results, sample_rate, band, callback=on_click)
     exit(0)
-
-    

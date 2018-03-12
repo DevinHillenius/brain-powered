@@ -43,7 +43,7 @@ def trial_meanpower(data, sample_rate, band):
     return spectrum_meanpower(b)
 
 
-def analysis(c1, c2, sample_rate, band, length):
+def analysis(c1, c2, sample_rate=256, band=[8, 13], length=1):
     """ Perform a mean power analysis over the signal """
     if length != None and length > 0:
         c1 = c1[:round(sample_rate*length)]
@@ -62,6 +62,9 @@ def load_eeg_mat(path, label='data'):
         the shape is (#trials, #datapoints)"""
     # Load matrix (# datapoints, # channels,  # tests)
     mat = loadmat(path)[label]
+    if VERBOSE:
+        print("Input Format: {}".format(mat))
+
     if len(mat.shape) == 3:
         mat = np.transpose(mat)
         # Remove redundant channel dimension
@@ -71,6 +74,7 @@ def load_eeg_mat(path, label='data'):
         print("Loaded {}".format(path))
         print("Number of trials: {}".format(mat.shape[0]))
         print("Length of trials: {}\n".format(mat.shape[1]))
+        print("Output Format: {}".format(mat))
     return mat
 
 def run_analysis(folders, band, sample_rate, length):
@@ -89,6 +93,8 @@ def run_analysis(folders, band, sample_rate, length):
         c2 = load_eeg_mat(p2)
         exp = analysis(c1, c2, sample_rate, band, length)
         results[folder] = exp
+        if VERBOSE:
+            print("Final analysis format: {}".format(results))
     return results
 
 def plot(results, sample_rate, band, callback=None):
@@ -98,7 +104,7 @@ def plot(results, sample_rate, band, callback=None):
     for result in results:
         legend_entries += pyplot.plot(results[result][0], results[result][1], 'o', label=result)
     pyplot.legend(handles=legend_entries)
-    
+
     pyplot.xlabel("Mean power First Channel")
     pyplot.ylabel("Mean power Second Channel")
     fig = pyplot.gcf()
