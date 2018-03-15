@@ -10,9 +10,14 @@ import numpy as np
 import analysis
 import classify
 import pickle
-import ardrone
+import drone
 
 LABELS = ['hand-right', 'hand-left', 'foot-right', 'foot-left']
+
+MAPPING = {'hand-right': 'forward',
+           'hand-left': 'backward',
+           'foot-right': 'rotate',
+           'foot-left': 'rotate'}
 
 
 def read_delete_when_available(filename):
@@ -32,21 +37,24 @@ def read_delete_when_available(filename):
             continue
     return data
 
-def periodically_classify(filename='data.csv'):
+def periodically_classify(filename='data.csv', drone=None):
     while True:
         data = read_delete_when_available(filename)
         result = analysis.analysis([data[:,0]], [data[:,1]])
         prediction = analysis.KNN.predict_proba([[result[0][0], result[1][0]]])
         #print("Classified as {}".format(prediction))
-        label_classification(prediction)
+        label_classification(prediction, drone)
 
-def label_classification(prediction):
+def label_classification(prediction, drone):
     max_prediction = max(prediction[0])
     label = np.argmax(prediction)
 
     print(prediction[0])
     if max_prediction >= 0.5:
         print("Predicted {} at {} confidence".format(LABELS[label], max_prediction))
+        if drone != None:
+            print("Moving drone!")
+            drone.move(MAPPING[LABELS[label]], 1)
     else:
         print("No classification")
 
@@ -81,10 +89,11 @@ def init(filename='data.csv'):
     calibration = calibrate(filename)
     analysis.KNN = classify.create_knn_classifier(calibration)
     save_calibration(calibration, 'augurkje')
+    return Drone()
 
 
 if __name__ == '__main__':
-    init()
+    drone = init()
 	#while True:
 	#	read_delete_when_available('data.csv')
     #calibration = calibrate('data.csv')
@@ -92,4 +101,4 @@ if __name__ == '__main__':
     #calibration = load_calibration('augurkje')
     print("Calibrating done, classifying each second now...")
     #show_calibration(calibration)
-    periodically_classify()
+    periodically_classify(drone)
