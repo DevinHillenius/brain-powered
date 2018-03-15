@@ -10,8 +10,11 @@ import numpy as np
 import analysis
 import classify
 import pickle
+import argparse
 
 LABELS = ['hand-right', 'hand-left', 'foot-right', 'foot-left']
+calibrations_folder = 'calibrations'
+
 
 
 def read_delete_when_available(filename):
@@ -49,13 +52,13 @@ def label_classification(prediction):
     else:
         print("No classification")
         
-def calibrate(filename):
+def calibrate(filename, measurements=5):
     calibrate_results = {}
     for label in LABELS:
         calibrate_results[label] = [[], []]
-        print('Please think {} for 10 seconds'.format(label))
+        print('Please think {} for {} seconds'.format(label, measurements))
 
-        for i in range(5):
+        for i in range(measurements):
             data = read_delete_when_available(filename)
             c1 = data[:, 0]
             c2 = data[:, 1]
@@ -76,19 +79,27 @@ def load_calibration(filename):
     with open(filename, 'rb') as file:
         return pickle.load(file)
     
-def init(filename='data.csv'):
-    calibration = calibrate(filename)
+def init(args, filename='data.csv'):
+    if args.calibration_file:
+        calibration = load_calibration(args.calibration_file)
+        print("Sucessfully loaded {}".format(args.calibration_file))
+    else:
+        calibration = calibrate(filename)
+        print("Calibration done")
+        path = os.path.join(calibrations_folder, args.subject_name + '.augurkje')
+        print('Saving calibration to {}'.format(path))
+        save_calibration(calibration, path)
+    show_calibration(calibration)
     analysis.KNN = classify.create_knn_classifier(calibration)
-    save_calibration(calibration, 'augurkje')
     
 
 if __name__ == '__main__':
-    init()
-	#while True:
-	#	read_delete_when_available('data.csv')
-    #calibration = calibrate('data.csv')
-    #save_calibration(calibration, 'augurkje')
-    #calibration = load_calibration('augurkje')
-    print("Calibrating done, classifying each second now...")
-    #show_calibration(calibration)
+    
+    parser = argparse.ArgumentParser(description='Live eeg classification demonstration')
+    parser.add_argument('subject_name', help='The name of the measured subject.')
+    parser.add_argument('-c', '--calibration_file',default=None, help='Load a calibration.')
+    args = parser.parse_args()
+     
+    init(args)
+    print("Classifying each second")
     periodically_classify()
