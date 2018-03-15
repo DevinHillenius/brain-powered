@@ -10,6 +10,7 @@ import numpy as np
 import analysis
 import classify
 import pickle
+import ardrone
 
 LABELS = ['hand-right', 'hand-left', 'foot-right', 'foot-left']
 
@@ -42,13 +43,13 @@ def periodically_classify(filename='data.csv'):
 def label_classification(prediction):
     max_prediction = max(prediction[0])
     label = np.argmax(prediction)
-    
+
     print(prediction[0])
     if max_prediction >= 0.5:
         print("Predicted {} at {} confidence".format(LABELS[label], max_prediction))
     else:
         print("No classification")
-        
+
 def calibrate(filename):
     calibrate_results = {}
     for label in LABELS:
@@ -67,7 +68,7 @@ def calibrate(filename):
 
 def show_calibration(calibration):
     analysis.plot(calibration)
-    
+
 def save_calibration(calibration, filename):
     with open(filename, 'wb') as file:
         pickle.dump(calibration, file)
@@ -75,12 +76,12 @@ def save_calibration(calibration, filename):
 def load_calibration(filename):
     with open(filename, 'rb') as file:
         return pickle.load(file)
-    
+
 def init(filename='data.csv'):
     calibration = calibrate(filename)
     analysis.KNN = classify.create_knn_classifier(calibration)
     save_calibration(calibration, 'augurkje')
-    
+
 
 if __name__ == '__main__':
     init()
