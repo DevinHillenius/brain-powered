@@ -1,5 +1,5 @@
-numpy==1.13.3
-matplotlib==2.1.1
-scipy==1.0.0
-mne==0.15.2
+numpy==1.12.1
+matplotlib==2.0.0
+ardrone==0.2.1
+scipy==0.19.0
 scikit_learn==0.19.1

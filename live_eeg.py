@@ -11,44 +11,48 @@ import analysis
 import classify
 import pickle
 import argparse
+import drone
 
 LABELS = ['hand-right', 'hand-left', 'foot-right', 'foot-left']
 calibrations_folder = 'calibrations'
 
 
+MAPPING = {'hand-right': 'forward',
+           'hand-left': 'backward',
+           'foot-right': 'rotate',
+           'foot-left': 'rotate'}
 
 def read_delete_when_available(filename):
     while not os.path.exists(filename):
-        #print("waiting for 50 ms");
         time.sleep(0.05)
-    #print("Reading data")
     time.sleep(0.1)
     data = np.loadtxt(filename, delimiter=',')
     print("Measuring...")
     while True:
         try:
-            #print("trying to remove")
             os.remove(filename)
             break
         except:
             continue
     return data
 
-def periodically_classify(filename='data.csv'):
+def periodically_classify(filename='data.csv', drone=None):
     while True:
         data = read_delete_when_available(filename)
         result = analysis.analysis([data[:,0]], [data[:,1]])
         prediction = analysis.KNN.predict_proba([[result[0][0], result[1][0]]])
-        #print("Classified as {}".format(prediction))
-        label_classification(prediction)
+        label_classification(prediction, drone)
 
-def label_classification(prediction):
+def label_classification(prediction, drone):
     max_prediction = max(prediction[0])
     label = np.argmax(prediction)
-    
+
     print(prediction[0])
     if max_prediction >= 0.5:
         print("Predicted {} at {} confidence".format(LABELS[label], max_prediction))
+        if drone != None:
+            print("Moving drone!")
+            drone.move(MAPPING[LABELS[label]], 1)
     else:
         print("No classification")
         
@@ -70,7 +74,7 @@ def calibrate(filename, measurements=5):
 
 def show_calibration(calibration):
     analysis.plot(calibration)
-    
+
 def save_calibration(calibration, filename):
     with open(filename, 'wb') as file:
         pickle.dump(calibration, file)
@@ -91,15 +95,14 @@ def init(args, filename='data.csv'):
         save_calibration(calibration, path)
     show_calibration(calibration)
     analysis.KNN = classify.create_knn_classifier(calibration)
-    
+    return Drone()
 
 if __name__ == '__main__':
-    
     parser = argparse.ArgumentParser(description='Live eeg classification demonstration')
     parser.add_argument('subject_name', help='The name of the measured subject.')
     parser.add_argument('-c', '--calibration_file',default=None, help='Load a calibration.')
     args = parser.parse_args()
      
-    init(args)
+    drone = init(args)
     print("Classifying each second")
-    periodically_classify()
+    periodically_classify(drone)
