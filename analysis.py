@@ -97,7 +97,7 @@ def run_analysis(folders, band, sample_rate, length):
             print("Final analysis format: {}".format(results))
     return results
 
-def plot(results, sample_rate, band, callback=None):
+def plot(results, sample_rate=256, band=(8,13), callback=None):
     """ Plot the results of the analyis to the screen. """
     legend_entries = []
 

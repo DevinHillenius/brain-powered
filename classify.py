@@ -3,7 +3,7 @@
 # By Derk Barten and Devin Hillenius
 # UvA Brain Powered 2017-2018
 
-from sklearn.neighbors import KNeighborsRegressor
+from sklearn.neighbors import KNeighborsClassifier
 from analysis import run_analysis, plot
 from matplotlib import pyplot
 
@@ -43,7 +43,7 @@ def create_knn_classifier(results):
         i += 1
 
     # Create the KNN model and fit on the data
-    KNN = KNeighborsRegressor(n_neighbors=5)
+    KNN = KNeighborsClassifier(n_neighbors=5)
     KNN.fit(X, Y)
     return KNN
 
