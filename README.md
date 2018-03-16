@@ -1,3 +1,16 @@
+# Brain Powered
+
+## Requirements
+Besided python 3, these modules are required and can be installed using the
+command `pip3 install -r requirements.txt` when inside the project root folder.
+* scipy
+* matplotlib
+* sklearn
+* numpy
+* An edited python-ardrone library is needed. This can be cloned
+or downloaded from <https://github.com/DevinHillenius/python-ardrone> and
+manually installed using `python3 setup.py`.
+
 ### Brain Powered Python Script
 The `eeg.py` script allows users to visualise the powers of EEG signals using
 scatterplots.
@@ -8,16 +21,6 @@ The folders containing the signals can be selected using the `-f` or `--folder`
 `--sample_rate` flag, it is 256 by default (see Examples). The frequency band
 is 8Hz to 13Hz by default and can be adjusted as well, using the `-b` or
 `--band` flag. Again, see the Example section for its usage.
-
-### Requirements
-Besided python 3, these modules are required and can be installed using the
-command `pip3 install -r requirements.txt` when inside the project root folder.
-* scipy
-* matplotlib
-* sklearn
-
-It might be needed to make `eeg.py` executable before being able to run the
-software the first time using it. This can be done using `chmod +x eeg.py`.
 
 ### Data organization
 We organised our EEG data in the following way. The root folder data is divided
