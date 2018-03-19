@@ -19,20 +19,26 @@ class Drone(object):
         """Land the drone."""
         self.d.land()
 
-    def move(self, direction, t):
+    def move(self, direction, t=1):
         """
         Move the drone forward or backward or rotate the drone for 't' seconds.
         The 'direction' argument can be:
             - 'forward': move forward
             - 'backward': move backward
-            - 'rotate': rotate to the right
+            - 'rotate_right': rotate 90 degrees to the right
+            - 'rotate_left': rotate 90 degrees to the left
         """
         if direction == 'forward':
             self.d.move_forward()
         elif direction == 'backward':
             self.d.move_backward()
-        else:
+        elif direction == 'rotate_right':
             self.d.turn_right()
+        elif direction == 'rotate_left':
+            self.d.turn_left()
+        else:
+            raise ValueError(
+                'Given direction {} not supported!'.format(direction))
         sleep(t)
         self.d.hover()
 
