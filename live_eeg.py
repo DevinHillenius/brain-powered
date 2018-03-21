@@ -11,23 +11,23 @@ import analysis
 import classify
 import pickle
 import argparse
-import drone
+#import drone
 
-LABELS = ['hand-right', 'hand-left', 'foot-right', 'foot-left']
+#LABELS = ['hand-right', 'hand-left', 'foot-right', 'foot-left']
+LABELS = sorted(['hand-right', 'hand-left'])
 calibrations_folder = 'calibrations'
 
 
-MAPPING = {'hand-right': 'forward',
-           'hand-left': 'backward',
-           'foot-right': 'rotate',
-           'foot-left': 'rotate'}
+MAPPING = {'hand-right': 'rotate_right',
+           'hand-left': 'rotate_left',
+           'foot': 'forward'}
 
 def read_delete_when_available(filename):
     while not os.path.exists(filename):
         time.sleep(0.05)
     time.sleep(0.1)
     data = np.loadtxt(filename, delimiter=',')
-    print("Measuring...")
+    #print("Measuring...")
     while True:
         try:
             os.remove(filename)
@@ -36,39 +36,49 @@ def read_delete_when_available(filename):
             continue
     return data
 
-def periodically_classify(filename='data.csv', drone=None):
+def periodically_classify(calibration, filename='data.csv', drone=None):
     while True:
         data = read_delete_when_available(filename)
         result = analysis.analysis([data[:,0]], [data[:,1]])
+        calibration['new'] = [[result[0][0]], [result[1][0]]]
         prediction = analysis.KNN.predict_proba([[result[0][0], result[1][0]]])
-        label_classification(prediction, drone)
+        label_classification(calibration, prediction, drone)
 
-def label_classification(prediction, drone):
+def label_classification(calibration, prediction, drone):
     max_prediction = max(prediction[0])
-    label = np.argmax(prediction)
+    label = np.argmax(prediction[0])
 
     print(prediction[0])
-    if max_prediction >= 0.5:
+    if max_prediction >= 0.8:
         print("Predicted {} at {} confidence".format(LABELS[label], max_prediction))
+
         if drone != None:
             print("Moving drone!")
-            drone.move(MAPPING[LABELS[label]], 1)
+            #drone.move(MAPPING[LABELS[label]], 1)
+        show_calibration(calibration)
+        return True
     else:
         print("No classification")
-        
-def calibrate(filename, measurements=5):
+
+    return False
+
+def calibrate(filename, measurements=20, sep=1):
     calibrate_results = {}
     for label in LABELS:
         calibrate_results[label] = [[], []]
-        print('Please think {} for {} seconds'.format(label, measurements))
 
-        for i in range(measurements):
-            data = read_delete_when_available(filename)
-            c1 = data[:, 0]
-            c2 = data[:, 1]
-            result = analysis.analysis([c1], [c2])
-            calibrate_results[label][0].append(result[0][0])
-            calibrate_results[label][1].append(result[1][0])
+    for j in range(sep):
+        for label in LABELS:
+            print('Please think {} for {} seconds'.format(label, measurements))
+            time.sleep(3)
+
+            for i in range(measurements):
+                data = read_delete_when_available(filename)
+                c1 = data[:, 0]
+                c2 = data[:, 1]
+                result = analysis.analysis([c1], [c2])
+                calibrate_results[label][0].append(result[0][0])
+                calibrate_results[label][1].append(result[1][0])
 
     return calibrate_results
 
@@ -82,27 +92,30 @@ def save_calibration(calibration, filename):
 def load_calibration(filename):
     with open(filename, 'rb') as file:
         return pickle.load(file)
-    
+
 def init(args, filename='data.csv'):
     if args.calibration_file:
         calibration = load_calibration(args.calibration_file)
         print("Sucessfully loaded {}".format(args.calibration_file))
     else:
         calibration = calibrate(filename)
+
         print("Calibration done")
         path = os.path.join(calibrations_folder, args.subject_name + '.augurkje')
         print('Saving calibration to {}'.format(path))
         save_calibration(calibration, path)
     show_calibration(calibration)
-    analysis.KNN = classify.create_knn_classifier(calibration)
-    return Drone()
+    analysis.KNN = classify.create_knn_classifier(calibration, LABELS)
+    return calibration
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Live eeg classification demonstration')
     parser.add_argument('subject_name', help='The name of the measured subject.')
     parser.add_argument('-c', '--calibration_file',default=None, help='Load a calibration.')
     args = parser.parse_args()
-     
-    drone = init(args)
+
+    #drone = init(args)
+    calibration = init(args)
     print("Classifying each second")
-    periodically_classify(drone)
+    #periodically_classify(drone)
+    periodically_classify(calibration)
