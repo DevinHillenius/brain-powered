@@ -24,7 +24,7 @@ def on_click(event):
     print("{} {}:\t{}".format(x, y, prediction))
 
 
-def create_knn_classifier(results):
+def create_knn_classifier(results, labels):
     """ Create a KNN classifier """
     # List of data points
     X = []
@@ -34,7 +34,7 @@ def create_knn_classifier(results):
     i = 0
 
     # Transform the format of the data to one readable by K-Nearest-Neighbors (KNN)
-    for result in results:
+    for result in labels:
         data = np.transpose(np.array(results[result]))
         data = [[line[0], line[1]] for line in data]
         X += data
@@ -43,8 +43,9 @@ def create_knn_classifier(results):
         i += 1
 
     # Create the KNN model and fit on the data
-    KNN = KNeighborsClassifier(n_neighbors=5)
+    KNN = KNeighborsClassifier(n_neighbors=7)
     KNN.fit(X, Y)
+
     return KNN
 
 
