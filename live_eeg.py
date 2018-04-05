@@ -11,27 +11,25 @@ import analysis
 import classify
 import pickle
 import argparse
-import drone
+from drone import Drone
 
 #LABELS = ['hand-right', 'hand-left', 'foot-right', 'foot-left']
-LABELS = sorted(['hand-right', 'hand-left', 'foot'])
+LABELS = sorted(['hand-right', 'foot'])
 calibrations_folder = 'calibrations'
 
 
 MAPPING = {'hand-right': 'rotate_right',
-           'hand-left': 'rotate_left',
            'foot': 'forward'}
 
 NUM_PLOT_CLASSIFICATION = 3
 
-DRONE = drone.Drone()
+DRONE = None
 
 def read_delete_when_available(filename):
     while not os.path.exists(filename):
         time.sleep(0.05)
     time.sleep(0.1)
     data = np.loadtxt(filename, delimiter=',')
-    #print("Measuring...")
     while True:
         try:
             os.remove(filename)
@@ -40,15 +38,15 @@ def read_delete_when_available(filename):
             continue
     return data
 
-def periodically_classify(calibration, filename='data.csv', drone=None):
+def periodically_classify(calibration, filename='data.csv'):
     while True:
         data = read_delete_when_available(filename)
         result = analysis.analysis([data[:,0]], [data[:,1]])
         calibration['new'] = [[result[0][0]], [result[1][0]]]
         prediction = analysis.KNN.predict_proba([[result[0][0], result[1][0]]])
-        label_classification(calibration, prediction, drone)
+        label_classification(calibration, prediction)
 
-def label_classification(calibration, prediction, drone):
+def label_classification(calibration, prediction):
     max_prediction = max(prediction[0])
     label = np.argmax(prediction[0])
 
@@ -56,14 +54,14 @@ def label_classification(calibration, prediction, drone):
     if max_prediction >= 0.8:
         print("Predicted {} at {} confidence".format(LABELS[label], max_prediction))
 
-        if drone != None:
+        if DRONE != None:
             print("Moving drone!")
-            DRONE.move(MAPPING[LABELS[label]], 1)
-        if NUM_PLOT_CLASSIFICATION > 0:
-            NUM_PLOT_CLASSIFICATION -= 1
-            show_calibration(calibration)
-        else:
-            time.sleep(3)
+            DRONE.move(MAPPING[LABELS[label]], t=3, speed=0.8)
+        # if NUM_PLOT_CLASSIFICATION > 0:
+        #     NUM_PLOT_CLASSIFICATION -= 1
+        #     show_calibration(calibration)
+        # else:
+        time.sleep(3)
         return True
     else:
         print("No classification")
@@ -120,11 +118,15 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Live eeg classification demonstration')
     parser.add_argument('subject_name', help='The name of the measured subject.')
     parser.add_argument('-c', '--calibration_file',default=None, help='Load a calibration.')
+    parser.add_argument('-d', '--drone', dest='drone', action='store_true', help='Use the drone.')
     args = parser.parse_args()
 
-    #drone = init(args)
+    if args.drone:
+        DRONE = Drone()
+    else:
+        DRONE = None
+
     calibration = init(args)
     print("Classifying each second")
-    #periodically_classify(drone)
     DRONE.takeoff()
     periodically_classify(calibration)
