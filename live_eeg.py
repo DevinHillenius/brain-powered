@@ -11,16 +11,20 @@ import analysis
 import classify
 import pickle
 import argparse
-#import drone
+import drone
 
 #LABELS = ['hand-right', 'hand-left', 'foot-right', 'foot-left']
-LABELS = sorted(['hand-right', 'hand-left'])
+LABELS = sorted(['hand-right', 'hand-left', 'foot'])
 calibrations_folder = 'calibrations'
 
 
 MAPPING = {'hand-right': 'rotate_right',
            'hand-left': 'rotate_left',
            'foot': 'forward'}
+
+NUM_PLOT_CLASSIFICATION = 3
+
+DRONE = drone.Drone()
 
 def read_delete_when_available(filename):
     while not os.path.exists(filename):
@@ -54,8 +58,12 @@ def label_classification(calibration, prediction, drone):
 
         if drone != None:
             print("Moving drone!")
-            #drone.move(MAPPING[LABELS[label]], 1)
-        show_calibration(calibration)
+            DRONE.move(MAPPING[LABELS[label]], 1)
+        if NUM_PLOT_CLASSIFICATION > 0:
+            NUM_PLOT_CLASSIFICATION -= 1
+            show_calibration(calibration)
+        else:
+            time.sleep(3)
         return True
     else:
         print("No classification")
@@ -118,4 +126,5 @@ if __name__ == '__main__':
     calibration = init(args)
     print("Classifying each second")
     #periodically_classify(drone)
+    DRONE.takeoff()
     periodically_classify(calibration)
