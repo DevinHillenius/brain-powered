@@ -4,6 +4,7 @@
 # UvA Brain Powered 2017-2018
 
 import os
+import signal
 import time
 import itertools
 import numpy as np
@@ -14,16 +15,20 @@ import argparse
 from drone import Drone
 
 #LABELS = ['hand-right', 'hand-left', 'foot-right', 'foot-left']
-LABELS = sorted(['hand-right', 'foot'])
+LABELS = sorted(['hand-right', 'hand-left', 'foot'])
 calibrations_folder = 'calibrations'
 
 
 MAPPING = {'hand-right': 'rotate_right',
+           'hand-left': 'rotate_left',
            'foot': 'forward'}
 
 NUM_PLOT_CLASSIFICATION = 3
 
 DRONE = None
+
+def handle_signint(signum, frame):
+    DRONE.land()
 
 def read_delete_when_available(filename):
     while not os.path.exists(filename):
@@ -56,12 +61,12 @@ def label_classification(calibration, prediction):
 
         if DRONE != None:
             print("Moving drone!")
-            DRONE.move(MAPPING[LABELS[label]], t=3, speed=0.8)
+            DRONE.move(MAPPING[LABELS[label]])
         # if NUM_PLOT_CLASSIFICATION > 0:
         #     NUM_PLOT_CLASSIFICATION -= 1
         #     show_calibration(calibration)
         # else:
-        time.sleep(3)
+        time.sleep(4)
         return True
     else:
         print("No classification")
@@ -115,18 +120,23 @@ def init(args, filename='data.csv'):
     return calibration
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description='Live eeg classification demonstration')
-    parser.add_argument('subject_name', help='The name of the measured subject.')
-    parser.add_argument('-c', '--calibration_file',default=None, help='Load a calibration.')
-    parser.add_argument('-d', '--drone', dest='drone', action='store_true', help='Use the drone.')
-    args = parser.parse_args()
+    try:
+        parser = argparse.ArgumentParser(description='Live eeg classification demonstration')
+        parser.add_argument('subject_name', help='The name of the measured subject.')
+        parser.add_argument('-c', '--calibration_file',default=None, help='Load a calibration.')
+        parser.add_argument('-d', '--drone', dest='drone', action='store_true', help='Use the drone.')
+        args = parser.parse_args()
+        signal.signal(signal.SIGINT, handle_signint)
 
-    if args.drone:
-        DRONE = Drone()
-    else:
-        DRONE = None
+        if args.drone:
+            DRONE = Drone()
+        else:
+            DRONE = None
 
-    calibration = init(args)
-    print("Classifying each second")
-    DRONE.takeoff()
-    periodically_classify(calibration)
+        calibration = init(args)
+        print("Classifying each second")
+        DRONE.takeoff()
+        periodically_classify(calibration)
+    except Exception as e:
+        print(e)
+        handle_signint(1, 1)

@@ -3,8 +3,8 @@
 # By Derk Barten and Devin Hillenius
 # UvA Brain Powered 2017-2018
 
-from pyardrone import ARDrone
-from time import sleep
+from pyardrone import ARDrone, at
+from time import sleep, time
 
 
 class Drone(object):
@@ -20,7 +20,7 @@ class Drone(object):
         """Land the drone."""
         self.d.land()
 
-    def move(self, direction, t=1, speed=1):
+    def move(self, direction):
         """
         Move the drone forward or backward or rotate the drone for 't' seconds.
         The 'direction' argument can be:
@@ -30,18 +30,37 @@ class Drone(object):
             - 'rotate_left': rotate 90 degrees to the left
         """
         if direction == 'forward':
-            self.d.move(forward=speed)
+            self.forward(t=1)
         elif direction == 'backward':
-            self.d.move(backward=speed)
+            self.backward(t=1)
         elif direction == 'rotate_right':
-            self.d.move(cw=speed)
+            self.cw(t=0.4)
         elif direction == 'rotate_left':
-            self.d.move(ccw=speed)
+            self.ccw(t=0.4)
         else:
             raise ValueError(
                 'Given direction {} not supported!'.format(direction))
-        sleep(t)
         self.d.hover()
+
+    def forward(self, t=0.3, s=0.1):
+        t_end = time() + t
+        while time() < t_end:
+            self.d.move(forward=s)
+
+    def backward(self, t=0.3, s=0.1):
+        t_end = time() + t
+        while time() < t_end:
+            self.d.move(backward=s)
+
+    def cw(self, t=0.08, s=0.8):
+        t_end = time() + t
+        while time() < t_end:
+            self.d.move(cw=s)
+
+    def ccw(self, t=0.08, s=0.8):
+        t_end = time() + t
+        while time() < t_end:
+            self.d.move(ccw=s)
 
     # def print_battery():
     #     """Print the battery percentage of the drone to stdout."""
